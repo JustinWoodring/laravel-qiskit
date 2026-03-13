@@ -46,7 +46,7 @@ class OpenQasm3SerializerTest extends TestCase
         $circuit = Circuit::new(2, 0);
         $qasm = $this->serializer->serialize($circuit);
 
-        $this->assertStringNotContainsString('bit[', $qasm);
+        $this->assertStringNotContainsString("\nbit[", $qasm);
     }
 
     public function test_serializes_hadamard_gate(): void
