@@ -22,33 +22,26 @@ class JobDispatchTest extends TestCase
         parent::setUp();
         Queue::fake();
         Event::fake();
+        // Http::fake() is intentionally NOT called here — each test that needs
+        // HTTP faking defines its own to avoid merging conflicts.
+    }
 
+    private function fakeIam(): void
+    {
         Http::fake([
             'fake.iam.cloud.ibm.com/*' => Http::response([
                 'access_token' => 'test-token',
                 'expires_in' => 3600,
             ]),
-            'fake.quantum-computing.cloud.ibm.com/v1/jobs' => Http::response([
-                'id' => 'ibm-job-abc123',
-            ], 200),
-            'fake.quantum-computing.cloud.ibm.com/v1/jobs/ibm-job-abc123' => Http::response([
-                'id' => 'ibm-job-abc123',
-                'state' => ['status' => 'Queued'],
-            ], 200),
-            'fake.quantum-computing.cloud.ibm.com/v1/jobs/ibm-job-abc123/results' => Http::response([
-                'results' => [['data' => ['counts' => ['00' => 512, '11' => 512]]]],
-            ], 200),
         ]);
     }
 
     public function test_dispatch_creates_quantum_job_model(): void
     {
-        $pending = Sampler::on('ibm_test')
+        $model = Sampler::on('ibm_test')
             ->addPub(Circuit::new(2)->h(0)->cx(0, 1)->measure())
-            ->dispatch();
-
-        // Manually dispatch to avoid __destruct auto-dispatch
-        $model = $pending->dispatch();
+            ->dispatch()  // Sampler::dispatch() → PendingJob
+            ->dispatch(); // PendingJob::dispatch() → QuantumJob
 
         $this->assertInstanceOf(QuantumJob::class, $model);
         $this->assertEquals('pending', $model->status);
@@ -58,16 +51,26 @@ class JobDispatchTest extends TestCase
 
     public function test_dispatch_enqueues_dispatch_job(): void
     {
-        $pending = Sampler::on('ibm_test')
-            ->addPub(Circuit::new(1)->h(0));
-
-        $model = $pending->dispatch();
+        Sampler::on('ibm_test')
+            ->addPub(Circuit::new(1)->h(0))
+            ->dispatch()  // Sampler::dispatch() → PendingJob
+            ->dispatch(); // PendingJob::dispatch() → enqueues DispatchQuantumJob
 
         Queue::assertPushed(DispatchQuantumJob::class);
     }
 
     public function test_dispatch_quantum_job_updates_model_and_fires_event(): void
     {
+        Http::fake([
+            'fake.iam.cloud.ibm.com/*' => Http::response([
+                'access_token' => 'test-token',
+                'expires_in' => 3600,
+            ]),
+            'fake.quantum-computing.cloud.ibm.com/v1/jobs' => Http::response([
+                'id' => 'ibm-job-abc123',
+            ], 200),
+        ]);
+
         $model = QuantumJob::create([
             'backend' => 'ibm_test',
             'primitive_type' => 'sampler',
@@ -75,9 +78,6 @@ class JobDispatchTest extends TestCase
             'payload' => ['program_id' => 'sampler', 'backend' => 'ibm_test', 'params' => ['pubs' => []]],
             'poll_count' => 0,
         ]);
-
-        Queue::fake([]);
-        Event::fake([]);
 
         $job = new DispatchQuantumJob($model->payload, $model->id);
         $job->handle(app(\JustinWoodring\LaravelQiskit\Client\QiskitClient::class));
@@ -111,8 +111,6 @@ class JobDispatchTest extends TestCase
             'poll_count' => 0,
         ]);
 
-        Event::fake([]);
-
         $pollJob = new PollQuantumJobStatus('ibm-job-abc123', $model->id, 0);
         $pollJob->handle(app(\JustinWoodring\LaravelQiskit\Client\QiskitClient::class));
 
@@ -140,8 +138,6 @@ class JobDispatchTest extends TestCase
             'poll_count' => 0,
         ]);
 
-        Event::fake([]);
-
         $pollJob = new PollQuantumJobStatus('ibm-job-fail', $model->id, 0);
         $pollJob->handle(app(\JustinWoodring\LaravelQiskit\Client\QiskitClient::class));
 
@@ -161,8 +157,6 @@ class JobDispatchTest extends TestCase
             'payload' => [],
             'poll_count' => 0,
         ]);
-
-        Event::fake([]);
 
         $maxAttempts = config('qiskit.polling.max_attempts', 360);
         $pollJob = new PollQuantumJobStatus('ibm-job-timeout', $model->id, $maxAttempts);
