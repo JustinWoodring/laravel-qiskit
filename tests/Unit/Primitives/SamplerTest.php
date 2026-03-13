@@ -2,6 +2,7 @@
 
 namespace JustinWoodring\LaravelQiskit\Tests\Unit\Primitives;
 
+use Illuminate\Support\Facades\Queue;
 use JustinWoodring\LaravelQiskit\Circuit\Circuit;
 use JustinWoodring\LaravelQiskit\Primitives\Sampler;
 use JustinWoodring\LaravelQiskit\Support\PendingJob;
@@ -9,6 +10,12 @@ use JustinWoodring\LaravelQiskit\Tests\TestCase;
 
 class SamplerTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Queue::fake();
+    }
+
     public function test_creates_sampler_on_backend(): void
     {
         $sampler = Sampler::on('ibm_brisbane');

@@ -2,6 +2,7 @@
 
 namespace JustinWoodring\LaravelQiskit\Tests\Unit\Primitives;
 
+use Illuminate\Support\Facades\Queue;
 use JustinWoodring\LaravelQiskit\Circuit\Circuit;
 use JustinWoodring\LaravelQiskit\Primitives\Estimator;
 use JustinWoodring\LaravelQiskit\Support\PendingJob;
@@ -9,6 +10,12 @@ use JustinWoodring\LaravelQiskit\Tests\TestCase;
 
 class EstimatorTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Queue::fake();
+    }
+
     public function test_creates_estimator_on_backend(): void
     {
         $estimator = Estimator::on('ibm_brisbane');
