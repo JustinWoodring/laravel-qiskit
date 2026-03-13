@@ -1,0 +1,53 @@
+{
+    "name": "justinwoodring/laravel-qiskit",
+    "description": "Laravel PHP package for IBM Quantum / Qiskit Runtime",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "quantum", "qiskit", "ibm", "quantum-computing"],
+    "authors": [
+        {
+            "name": "Justin Woodring",
+            "homepage": "https://github.com/JustinWoodring"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/http": "^10.0|^11.0|^12.0",
+        "illuminate/queue": "^10.0|^11.0|^12.0",
+        "illuminate/events": "^10.0|^11.0|^12.0",
+        "illuminate/database": "^10.0|^11.0|^12.0",
+        "illuminate/cache": "^10.0|^11.0|^12.0",
+        "illuminate/console": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^10.0|^11.0",
+        "mockery/mockery": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "JustinWoodring\\LaravelQiskit\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "JustinWoodring\\LaravelQiskit\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "JustinWoodring\\LaravelQiskit\\QiskitServiceProvider"
+            ],
+            "aliases": {
+                "Qiskit": "JustinWoodring\\LaravelQiskit\\Facades\\Qiskit"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

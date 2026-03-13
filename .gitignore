@@ -1,0 +1,24 @@
+# Dependencies
+/vendor/
+/demo/vendor/
+
+# Laravel
+/demo/.env
+/demo/storage/
+/demo/bootstrap/cache/
+/demo/public/hot
+/demo/public/storage
+
+# Compiled / cached
+*.cache
+*.log
+.phpunit.result.cache
+.phpunit.cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
