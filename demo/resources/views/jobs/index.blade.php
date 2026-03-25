@@ -1,99 +1,86 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Jobs — Laravel Qiskit Demo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 text-gray-800">
+@extends('layout')
 
-<div class="max-w-6xl mx-auto py-12 px-4">
+@section('content')
+<div style="display:flex; gap:1.5rem; align-items:flex-start;">
 
-    <div class="flex items-center justify-between mb-8">
-        <div>
-            <a href="{{ url('/') }}" class="text-sm text-blue-600 hover:underline">← Home</a>
-            <h1 class="text-3xl font-bold mt-1">Quantum Jobs</h1>
+    {{-- Submit form --}}
+    <div style="width:280px; flex-shrink:0;">
+        <div class="card">
+            <h3>Submit a Job</h3>
+            <form method="POST" action="{{ route('jobs.store') }}">
+                @csrf
+                <div style="margin-bottom:.75rem;">
+                    <label>Circuit</label>
+                    <select name="circuit" style="width:100%;">
+                        <option value="bell">Bell state (2q)</option>
+                        <option value="ghz">GHZ state (3q)</option>
+                        <option value="random">H⊗2 (2q)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:.75rem;">
+                    <label>Shots</label>
+                    <input type="number" name="shots" value="1024" min="1" max="20000" style="width:100%;">
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label>Backend (optional)</label>
+                    <input type="text" name="backend" placeholder="{{ config('qiskit.default_backend') }}" style="width:100%;">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Dispatch</button>
+            </form>
         </div>
-        <div class="space-x-2">
-            <a href="{{ route('submit.bell') }}" class="bg-blue-600 text-white text-sm px-4 py-2 rounded hover:bg-blue-700">
-                + Bell State
-            </a>
-            <a href="{{ route('submit.vqe') }}" class="bg-purple-600 text-white text-sm px-4 py-2 rounded hover:bg-purple-700">
-                + VQE
-            </a>
+
+        <div class="card">
+            <h3>Session Demo</h3>
+            <p style="font-size:.8rem; color:#64748b; margin-bottom:1rem;">
+                Submit two jobs inside a single IBM Quantum session.
+            </p>
+            <form method="POST" action="{{ route('sessions.demo') }}">
+                @csrf
+                <button type="submit" class="btn btn-secondary" style="width:100%;">Run Session Demo</button>
+            </form>
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="bg-green-100 text-green-800 px-4 py-3 rounded mb-6">{{ session('success') }}</div>
-    @endif
-
-    <div class="bg-white rounded-xl shadow overflow-hidden">
-        <table class="w-full text-sm">
-            <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
+    {{-- Jobs table --}}
+    <div style="flex:1; min-width:0;">
+        <h2>Quantum Jobs</h2>
+        @if($jobs->isEmpty())
+            <p style="color:#475569; font-size:.9rem;">No jobs yet — submit one on the left.</p>
+        @else
+        <table>
+            <thead>
                 <tr>
-                    <th class="px-4 py-3 text-left">ID</th>
-                    <th class="px-4 py-3 text-left">IBM Job ID</th>
-                    <th class="px-4 py-3 text-left">Backend</th>
-                    <th class="px-4 py-3 text-left">Primitive</th>
-                    <th class="px-4 py-3 text-left">Status</th>
-                    <th class="px-4 py-3 text-left">Submitted</th>
-                    <th class="px-4 py-3 text-left"></th>
+                    <th>#</th>
+                    <th>IBM Job ID</th>
+                    <th>Primitive</th>
+                    <th>Backend</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th></th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
-                @forelse($jobs as $job)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 font-mono">{{ $job->id }}</td>
-                    <td class="px-4 py-3 font-mono text-xs text-gray-500">
-                        {{ $job->ibm_job_id ?? '—' }}
-                    </td>
-                    <td class="px-4 py-3">{{ $job->backend }}</td>
-                    <td class="px-4 py-3">
-                        <span class="px-2 py-0.5 rounded text-xs font-medium
-                            {{ $job->primitive_type === 'sampler' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700' }}">
-                            {{ $job->primitive_type }}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3">
-                        @php
-                            $colors = [
-                                'pending'   => 'bg-gray-100 text-gray-600',
-                                'queued'    => 'bg-yellow-100 text-yellow-700',
-                                'running'   => 'bg-blue-100 text-blue-700',
-                                'completed' => 'bg-green-100 text-green-700',
-                                'failed'    => 'bg-red-100 text-red-700',
-                                'cancelled' => 'bg-gray-200 text-gray-500',
-                                'timed_out' => 'bg-orange-100 text-orange-700',
-                            ];
-                        @endphp
-                        <span class="px-2 py-0.5 rounded text-xs font-medium {{ $colors[$job->status] ?? '' }}">
-                            {{ $job->status }}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3 text-gray-500 text-xs">
-                        {{ $job->submitted_at?->diffForHumans() ?? '—' }}
-                    </td>
-                    <td class="px-4 py-3">
-                        <a href="{{ route('jobs.show', $job->id) }}" class="text-blue-600 hover:underline text-xs">
-                            View
-                        </a>
-                    </td>
-                </tr>
-                @empty
+            <tbody>
+                @foreach($jobs as $job)
                 <tr>
-                    <td colspan="7" class="px-4 py-8 text-center text-gray-400">
-                        No jobs yet. <a href="{{ route('submit.bell') }}" class="text-blue-600 hover:underline">Submit one!</a>
+                    <td>{{ $job->id }}</td>
+                    <td style="font-family:monospace; font-size:.75rem; color:#64748b;">
+                        {{ $job->ibm_job_id ? substr($job->ibm_job_id, 0, 16) . '…' : '—' }}
+                    </td>
+                    <td>{{ $job->primitive_type ?? '—' }}</td>
+                    <td>{{ $job->backend ?? '—' }}</td>
+                    <td>
+                        <span class="badge badge-{{ $job->status }}">{{ $job->status }}</span>
+                    </td>
+                    <td class="meta">{{ $job->submitted_at?->diffForHumans() ?? $job->created_at->diffForHumans() }}</td>
+                    <td>
+                        <a href="{{ route('jobs.show', $job) }}" class="btn btn-secondary" style="font-size:.75rem; padding:.2rem .6rem;">View</a>
                     </td>
                 </tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
+        <div style="margin-top:1rem;">{{ $jobs->links() }}</div>
+        @endif
     </div>
-
-    <div class="mt-4">{{ $jobs->links() }}</div>
-
 </div>
-
-</body>
-</html>
+@endsection

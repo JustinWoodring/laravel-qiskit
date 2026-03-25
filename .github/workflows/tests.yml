@@ -15,10 +15,12 @@ jobs:
       fail-fast: false
       matrix:
         php: [8.2, 8.3, 8.4]
-        laravel: [10, 11, 12]
+        laravel: [10, 11, 12, 13]
         exclude:
           - php: 8.2
             laravel: 12
+          - php: 8.2
+            laravel: 13
 
     name: PHP ${{ matrix.php }} — Laravel ${{ matrix.laravel }}
 
@@ -36,7 +38,7 @@ jobs:
       - name: Select Laravel version
         run: |
           composer require "laravel/framework:^${{ matrix.laravel }}" \
-            "orchestra/testbench:^${{ matrix.laravel == 10 && '8' || matrix.laravel == 11 && '9' || '10' }}" \
+            "orchestra/testbench:^${{ matrix.laravel == 10 && '8' || matrix.laravel == 11 && '9' || matrix.laravel == 12 && '10' || '11' }}" \
             --no-update
 
       - name: Install dependencies

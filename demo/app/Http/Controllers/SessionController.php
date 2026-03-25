@@ -2,62 +2,45 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\View\View;
+use Illuminate\Http\Request;
 use JustinWoodring\LaravelQiskit\Circuit\Circuit;
 use JustinWoodring\LaravelQiskit\Facades\Qiskit;
-use JustinWoodring\LaravelQiskit\Models\QuantumJob;
 
 class SessionController extends Controller
 {
-    /**
-     * Demonstrate submitting multiple jobs within a single IBM Quantum session.
-     *
-     * Sessions keep a backend reserved for your jobs, reducing queue wait
-     * times when running variational algorithms with many iterations.
-     */
-    public function demo(): View
+    public function demo(Request $request)
     {
-        $jobs = [];
+        $request->validate([
+            'backend' => 'nullable|string',
+        ]);
 
-        Qiskit::sessions()->run(config('qiskit.default_backend'), function (string $sessionId) use (&$jobs) {
-            // All jobs submitted inside this closure share the same session,
-            // so they run on the same backend without re-queuing.
+        $backend = $request->input('backend', config('qiskit.default_backend'));
+        $jobs    = [];
 
-            // Job 1: Bell state
-            $jobs[] = Qiskit::sampler()
-                ->addPub(
-                    Circuit::new(2, 2)->h(0)->cx(0, 1)->measure(),
-                    shots: 1024
-                )
+        Qiskit::sessions()->run($backend, function (string $sessionId) use ($backend, &$jobs) {
+            $circuit1 = Circuit::new(2, 2)->h(0)->cx(0, 1)->measure();
+            $circuit2 = Circuit::new(2, 2)->h(0)->h(1)->measure();
+
+            $job1 = Qiskit::sampler($backend)
+                ->addPub($circuit1, shots: 512)
                 ->inSession($sessionId)
                 ->dispatch()
                 ->dispatch();
 
-            // Job 2: Parameterized sweep — bind multiple angles
-            $ansatz = Circuit::new(1)->withParameters(['theta'])->ry('theta', 0)->measure();
-
-            foreach ([0, M_PI / 4, M_PI / 2, M_PI] as $theta) {
-                $jobs[] = Qiskit::sampler()
-                    ->addPub($ansatz->bind(['theta' => $theta]), shots: 512)
-                    ->inSession($sessionId)
-                    ->dispatch()
-                    ->dispatch();
-            }
-
-            // Job 3: Estimator in the same session
-            $jobs[] = Qiskit::estimator()
-                ->addPub(
-                    Circuit::new(2)->h(0)->cx(0, 1),
-                    observables: ['ZZ', 'ZI', 'IZ']
-                )
+            $job2 = Qiskit::sampler($backend)
+                ->addPub($circuit2, shots: 512)
                 ->inSession($sessionId)
                 ->dispatch()
                 ->dispatch();
+
+            $jobs = [$job1, $job2];
         });
 
-        // Collect the created QuantumJob models for display
-        $quantumJobs = QuantumJob::whereIn('id', collect($jobs)->pluck('id'))->get();
-
-        return view('sessions.demo', compact('quantumJobs'));
+        return redirect()->route('jobs.index')
+            ->with('success', sprintf(
+                'Session demo submitted %d jobs to %s.',
+                count($jobs),
+                $backend
+            ));
     }
 }

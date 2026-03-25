@@ -1,44 +1,63 @@
 # laravel-qiskit Demo
 
-A minimal Laravel application demonstrating the `justinwoodring/laravel-qiskit` package.
+A real Laravel 13 application demonstrating the `justinwoodring/laravel-qiskit` package.
+
+## Features
+
+- **Submit jobs** — choose Bell state, GHZ state, or H⊗2; pick shots and backend
+- **Live job table** — paginated list with status badges
+- **Job detail page** — measurement counts rendered as bar charts, expectation values, raw payload
+- **Session demo** — two jobs submitted inside a single IBM Quantum session
+- **Backend browser** — lists all backends from your IBM Quantum account
+- **Event listener** — `HandleQuantumResults` logs completed job counts to `storage/logs/laravel.log`
+- **Standalone examples** — runnable PHP scripts in `examples/`
 
 ## Setup
 
 ```bash
 cd demo
 
-# Install dependencies (symlinks the parent package via path repository)
+# Install dependencies (the parent package is symlinked via path repository)
 composer install
 
 # Copy env and fill in your IBM Quantum credentials
 cp .env.example .env
 php artisan key:generate
+```
 
-# Edit .env — set QISKIT_API_KEY and QISKIT_SERVICE_CRN
-# Get these from https://quantum.ibm.com/account
+Edit `.env`:
 
-# Install the package (publishes config + runs migrations)
+```env
+QISKIT_API_KEY=your-ibm-quantum-api-key
+QISKIT_SERVICE_CRN=crn:v1:bluemix:public:quantum-computing:us-east:...
+QISKIT_DEFAULT_BACKEND=ibm_brisbane
+```
+
+Get credentials at <https://quantum.ibm.com/account>.
+
+```bash
+# Publish config + run migrations
 php artisan qiskit:install
 
 # Start the dev server
 php artisan serve
 ```
 
-Then open http://localhost:8000.
+Open <http://localhost:8000>.
 
 ## Queue Worker
 
-For async job dispatch (the recommended production pattern), run the queue worker in a separate terminal:
+For async job submission (the default in the web UI), run the queue worker in a separate terminal:
 
 ```bash
 php artisan queue:work
 ```
 
-Jobs submitted via the web UI or `examples/async_job_with_events.php` will be picked up by the worker, submitted to IBM Quantum, and polled until completion. Results arrive via the `QuantumJobCompleted` event — see `app/Listeners/HandleQuantumResults.php`.
+Jobs are submitted to IBM Quantum via `DispatchQuantumJob`, then polled automatically by `PollQuantumJobStatus`. When a job completes, `QuantumJobCompleted` fires and `HandleQuantumResults` logs the counts.
 
 ## Standalone Examples
 
-These scripts run synchronously (blocking until IBM Quantum responds) and are useful for quick experiments:
+These scripts bootstrap Laravel and run synchronously — no queue worker needed:
 
 ```bash
 # Bell state via Sampler
@@ -47,41 +66,28 @@ php examples/bell_state.php
 # VQE angle sweep via Estimator
 php examples/vqe_estimator.php
 
-# Backend discovery + filtering
+# Backend discovery
 php examples/backend_discovery.php
 
-# Async submission + event-driven polling
+# Async job with event listener
 php examples/async_job_with_events.php
 ```
-
-## Web Routes
-
-| Route | Description |
-|---|---|
-| `GET /` | Welcome / quick start |
-| `GET /backends` | List & filter IBM Quantum backends |
-| `GET /jobs` | All submitted jobs |
-| `GET /jobs/{id}` | Job status & results (auto-refreshes until terminal) |
-| `GET /submit/bell-state` | Submit a Bell state Sampler job |
-| `GET /submit/ghz` | Submit a 3-qubit GHZ state Sampler job |
-| `GET /submit/vqe` | Submit a VQE Estimator job |
-| `GET /sessions/demo` | Submit a batch of jobs in a single session |
 
 ## Artisan Commands
 
 ```bash
-# List jobs
+# List recent jobs
 php artisan qiskit:jobs
-php artisan qiskit:jobs --status=completed
 
-# Check job status
-php artisan qiskit:status 42
-php artisan qiskit:status cj1abc123 --ibm-id
+# Check a job by local ID
+php artisan qiskit:status 1
+
+# Check by IBM job ID
+php artisan qiskit:status cj1abc123def --ibm-id
 
 # Cancel a job
-php artisan qiskit:cancel 42
+php artisan qiskit:cancel 1
 
 # List backends
-php artisan qiskit:backends
 php artisan qiskit:backends --online
 ```

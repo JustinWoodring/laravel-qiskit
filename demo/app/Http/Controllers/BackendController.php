@@ -2,34 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\View\View;
 use JustinWoodring\LaravelQiskit\Facades\Qiskit;
 
 class BackendController extends Controller
 {
-    /**
-     * List all available backends, with optional filtering.
-     */
-    public function index(): View
+    public function index()
     {
-        // All backends from IBM Quantum
-        $all = Qiskit::backends()->all();
+        try {
+            $backends = Qiskit::backends()->all();
+        } catch (\Throwable $e) {
+            $backends = [];
+            session()->flash('error', 'Could not fetch backends: ' . $e->getMessage());
+        }
 
-        // Only online backends with at least 100 qubits, real hardware only
-        $recommended = Qiskit::backends()
-            ->filter()
-            ->online()
-            ->withMinQubits(100)
-            ->simulator(false)
-            ->withMaxQueueDepth(50)
-            ->get();
-
-        // Simulators
-        $simulators = Qiskit::backends()
-            ->filter()
-            ->simulator()
-            ->get();
-
-        return view('backends.index', compact('all', 'recommended', 'simulators'));
+        return view('backends.index', compact('backends'));
     }
 }
